@@ -1,13 +1,11 @@
-import { niconico, Nicovideo } from 'niconico'
 import * as Discord from 'discord.js'
 import ytdl from 'ytdl-core-discord';
-import {Converter } from 'ffmpeg-stream'
+import Niconico from './niconico'
+import { Song } from './interface'
 
 const {
     prefix,
     token,
-    nico_email,
-    nico_password,
 } = require('./config.json')
 
 const client = new Discord.Client();
@@ -21,12 +19,6 @@ client.once('disconnect', () => {
     console.log('Disconnect!');
 });
 
-interface Song {
-    url: string,
-    title: string,
-    site: string,
-    duration: number,
-}
 interface GuildQueue {
     songs: Song[],
     connection: Discord.VoiceConnection | null,
@@ -39,32 +31,6 @@ const queueConstructor = function (q: Queue, id: string) {
     q[id] = { songs: [], connection: null, volume: 100, last_text_channel: null }
 }
 
-const nicoStream = async function (videoId: string) {
-    try {
-        const session = await niconico.login(
-            nico_email, nico_password
-        )
-        const client = new Nicovideo(session)
-
-        return client.stream(videoId)
-    } catch (err) {
-        console.error(err)
-    }
-}
-
-const nicoThumb = async function (videoId: string) {
-    try {
-        const session = await niconico.login(
-            nico_email, nico_password
-        )
-        const client = new Nicovideo(session)
-
-        const res = await client.thumbinfo(videoId)
-        return res
-    } catch (err) {
-        console.error(err)
-    }
-}
 
 const play = async function (q: GuildQueue, song: Song) {
     if (song === undefined) {
@@ -75,21 +41,9 @@ const play = async function (q: GuildQueue, song: Song) {
 
     let dispatcher: Discord.StreamDispatcher = null
 
-    console.log(song, song.site , song.site ==='nicovideo')
+    console.log(song, song.site, song.site === 'nicovideo')
     if (song.site === 'nicovideo') {
-        const smid = /sm\d+/.exec(song.url)[0]
-        const converter = new Converter()
-        const input = converter.createInputStream({
-            f: "mp4",
-        })
-        const nicostream = await nicoStream(smid)
-        nicostream.data.pipe(input)
-        const output = converter.createOutputStream({
-            acodec: "libmp3lame",
-            f: "mp3"
-        })
-        dispatcher = q.connection.play(output,  { bitrate: "auto" })
-        await converter.run()
+        dispatcher = await Niconico.play(song.url, q.connection)
     }
     else if (song.site === 'youtube')
         dispatcher = q.connection.play(await ytdl(song.url), { bitrate: "auto", type: 'opus' })
@@ -133,14 +87,7 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
             duration: parseInt(songInfo.length_seconds),
         }
     } else if (/^https:\/\/(www\.)?nicovideo.jp/i.exec(url) !== null) {
-        const smid = /sm\d+/.exec(url)[0]
-        const songInfo = await nicoThumb(smid)
-        song = {
-            site: 'nicovideo',
-            title: songInfo.title,
-            url: url,
-            duration: -1
-        }
+        song = await Niconico.getInfo(url)
     }
     if (song === null) return message.channel.send(`URL: ${url} がわかりませんでした`)
     q.songs.push(song)
