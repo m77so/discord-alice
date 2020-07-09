@@ -1,11 +1,12 @@
 import { niconico, Nicovideo } from 'niconico'
 import { VoiceConnection, StreamDispatcher} from 'discord.js'
 import { Converter } from 'ffmpeg-stream'
-
+import { Song, MusicSite } from './interface'
 const {
     nico_email,
     nico_password,
 } = require('./config.json')
+const id = 'niconico'
 
 const nicoStream = async function (videoId: string) {
     try {
@@ -19,9 +20,13 @@ const nicoStream = async function (videoId: string) {
         console.error(err)
     }
 }
-
-const getInfo = async function (url: string) {
-    const smid = /sm\d+/.exec(url)[0]
+const getId = function(url: string): string | null {
+    const urlobj = new URL(url)
+    if (!(['nicovideo.com', 'www.nicovideo.com', 'nico.ms'].includes(urlobj.hostname))) return null
+    return /sm\d+/.exec(url)[0]
+}
+const getInfo = async function (url: string): Promise<Song> {
+    const smid = getId(url)
     try {
         const session = await niconico.login(
             nico_email, nico_password
@@ -30,7 +35,7 @@ const getInfo = async function (url: string) {
 
         const songInfo = await client.thumbinfo(smid)
         return {
-            site: 'nicovideo',
+            site: id,
             title: songInfo.title,
             url: url,
             duration: -1
@@ -47,16 +52,19 @@ const play = async function(url: string, connection: VoiceConnection): Promise<S
         f: "mp4",
     })
     const nicostream = await nicoStream(smid)
-    nicostream.data.pipe(input)
+    nicostream.pipe(input)
     const output = converter.createOutputStream({
         acodec: "libmp3lame",
         f: "mp3"
     })
     const dispatcher = connection.play(output,  { bitrate: "auto" })
-    await converter.run()
+    converter.run() // awaitしない
     return dispatcher
 }
 
-export default {
-    play, getInfo, 
+
+const Niconico: MusicSite = {
+    play, getInfo, getId, id
 }
+
+export default Niconico

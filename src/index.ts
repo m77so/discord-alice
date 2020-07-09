@@ -1,7 +1,8 @@
 import * as Discord from 'discord.js'
-import ytdl from 'ytdl-core-discord';
 import Niconico from './niconico'
-import { Song } from './interface'
+import Youtube from './youtube'
+import { Song, MusicSite } from './interface'
+import Niconico from './niconico'
 
 const {
     prefix,
@@ -28,9 +29,10 @@ interface GuildQueue {
 type Queue = { [key: string]: GuildQueue }
 const queue: Queue = {}
 const queueConstructor = function (q: Queue, id: string) {
-    q[id] = { songs: [], connection: null, volume: 100, last_text_channel: null }
+    q[id] = { songs: [], connection: null, volume: 10, last_text_channel: null }
 }
 
+const musicSites: MusicSite[] = [Niconico, Youtube]
 
 const play = async function (q: GuildQueue, song: Song) {
     if (song === undefined) {
@@ -41,12 +43,12 @@ const play = async function (q: GuildQueue, song: Song) {
 
     let dispatcher: Discord.StreamDispatcher = null
 
-    console.log(song, song.site, song.site === 'nicovideo')
-    if (song.site === 'nicovideo') {
-        dispatcher = await Niconico.play(song.url, q.connection)
+    for(const musicSite of musicSites) {
+        if (song.site === musicSite.id) {
+            dispatcher = await musicSite.play(song.url, q.connection)
+            break
+        }
     }
-    else if (song.site === 'youtube')
-        dispatcher = q.connection.play(await ytdl(song.url), { bitrate: "auto", type: 'opus' })
 
     if (dispatcher === null) {
         if (q.last_text_channel !== null)
@@ -54,12 +56,13 @@ const play = async function (q: GuildQueue, song: Song) {
         return
     }
 
+    dispatcher.setVolumeLogarithmic(q.volume / 100)
+
     dispatcher.on('finish', () => {
         q.songs.shift()
         play(q, q.songs[0])
     })
         .on("error", error => console.error(error));
-    dispatcher.setVolumeLogarithmic(q.volume / 100)
 }
 
 
@@ -78,17 +81,14 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
     console.log(args)
     const url = args[1]
     let song: Song = null;
-    if (/^https:\/\/(www\.)?youtube.com/i.exec(url) !== null || /^https:\/\/(www\.)?youtu.be/i.exec(url) !== null) {
-        const songInfo = await ytdl.getInfo(args[1])
-        song = {
-            site: 'youtube',
-            title: songInfo.title,
-            url: songInfo.video_url,
-            duration: parseInt(songInfo.length_seconds),
+
+    for(const musicSite of musicSites) {
+        if (musicSite.getId(url) !== null) {
+            song = await musicSite.getInfo(url)
+            break
         }
-    } else if (/^https:\/\/(www\.)?nicovideo.jp/i.exec(url) !== null) {
-        song = await Niconico.getInfo(url)
     }
+
     if (song === null) return message.channel.send(`URL: ${url} がわかりませんでした`)
     q.songs.push(song)
     if (q.connection !== null) {
@@ -97,7 +97,6 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
 
     try {
         const connection = await voiceChannel.join()
-        console.log(2345)
         q.connection = connection;
         play(q, q.songs[0])
     } catch (err) {
@@ -146,7 +145,8 @@ const setVolume = function (message: Discord.Message, q: GuildQueue) {
     if (!(vol > 0 && vol < 1e5)) {
         return message.channel.send('不正な値です')
     }
-    q.connection.dispatcher.setVolumeLogarithmic(vol / 100)
+    if (q.connection !== null && q.connection.dispatcher !== null )
+        q.connection.dispatcher.setVolumeLogarithmic(vol / 100)
     q.volume = vol
     message.channel.send(`Volumeを${vol}に設定しました${vol > 100 ? '💔💔💔' : ''}`)
 }
@@ -162,6 +162,7 @@ client.on('message', async message => {
     serverQueue.last_text_channel = message.channel
     if (message.content.startsWith(`${prefix}play`)) {
         append(message, serverQueue)
+        showQueue(message, serverQueue)
     } else if (message.content.startsWith(`${prefix}skip`)) {
         skip(message, serverQueue)
     } else if (message.content.startsWith(`${prefix}stop`)) {
