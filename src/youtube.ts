@@ -20,7 +20,14 @@ const getInfo = async function (url: string): Promise<Song> {
 }
 
 const getId = function(url: string): string | null {
-    const urlobj = new URL(url)
+    let urlobj: URL = null
+    try{
+        urlobj = new URL(url)
+    } catch (err) {
+        if(err.code === 'ERR_INVALID_URL') return null
+        console.error(err)
+        return null
+    }
     if (!(['youtube.com', 'www.youtube.com', 'youtu.be'].includes(urlobj.hostname))) return null
     if (urlobj.hostname === 'youtu.be') return urlobj.pathname.substr(1)
     return urlobj.searchParams.get('v')
