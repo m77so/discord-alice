@@ -29,7 +29,7 @@ const getId = function(url: string): string | null {
         console.error(err)
         return null
     }
-        if (!(['nicovideo.jp', 'www.nicovideo.jp', 'nico.ms'].includes(urlobj.hostname))) return null
+    if (!(['nicovideo.jp', 'www.nicovideo.jp', 'nico.ms'].includes(urlobj.hostname))) return null
     const smids = /sm\d+/.exec(url)
     if (smids === null) return null
     return smids[0]
