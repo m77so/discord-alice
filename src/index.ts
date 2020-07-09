@@ -2,7 +2,6 @@ import * as Discord from 'discord.js'
 import Niconico from './niconico'
 import Youtube from './youtube'
 import { Song, MusicSite } from './interface'
-import Niconico from './niconico'
 
 const {
     prefix,
