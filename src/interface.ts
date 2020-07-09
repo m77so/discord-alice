@@ -6,10 +6,10 @@ export interface Song {
     site: string,
     duration: number,
 }
-
+type stringnull = null | string
 export interface MusicSite {
     play: (url: string, connection: VoiceConnection) => Promise<StreamDispatcher>,
     getInfo: (url: string) => Promise<Song>,
-    getId: (url:string) => string | null,
+    getId: (url:string) => (null|string),
     id: string
 }

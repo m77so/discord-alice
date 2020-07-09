@@ -21,9 +21,18 @@ const nicoStream = async function (videoId: string) {
     }
 }
 const getId = function(url: string): string | null {
-    const urlobj = new URL(url)
-    if (!(['nicovideo.com', 'www.nicovideo.com', 'nico.ms'].includes(urlobj.hostname))) return null
-    return /sm\d+/.exec(url)[0]
+    let urlobj: URL = null
+    try{
+        urlobj = new URL(url)
+    } catch (err) {
+        if(err.code === 'ERR_INVALID_URL') return null
+        console.error(err)
+        return null
+    }
+        if (!(['nicovideo.jp', 'www.nicovideo.jp', 'nico.ms'].includes(urlobj.hostname))) return null
+    const smids = /sm\d+/.exec(url)
+    if (smids === null) return null
+    return smids[0]
 }
 const getInfo = async function (url: string): Promise<Song> {
     const smid = getId(url)
