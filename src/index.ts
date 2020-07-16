@@ -1,6 +1,7 @@
 import * as Discord from 'discord.js'
 import Niconico from './niconico'
 import Youtube from './youtube'
+import Twitter from './twitter'
 import { Song, MusicSite } from './interface'
 
 const {
@@ -31,7 +32,7 @@ const queueConstructor = function (q: Queue, id: string) {
     q[id] = { songs: [], connection: null, volume: 10, last_text_channel: null }
 }
 
-const musicSites: MusicSite[] = [Niconico, Youtube]
+const musicSites: MusicSite[] = [Niconico, Youtube, Twitter]
 
 const play = async function (q: GuildQueue, song: Song) {
     if (song === undefined) {
