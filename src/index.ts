@@ -45,7 +45,7 @@ const play = async function (q: GuildQueue, song: Song) {
 
     for(const musicSite of musicSites) {
         if (song.site === musicSite.id) {
-            dispatcher = await musicSite.play(song.url, q.connection)
+            dispatcher = await musicSite.play(song, q.connection)
             break
         }
     }
@@ -84,7 +84,11 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
 
     for(const musicSite of musicSites) {
         if (musicSite.getId(url) !== null) {
-            song = await musicSite.getInfo(url)
+            try{
+                song = await musicSite.getInfo(url)
+            } catch (err) {
+                return message.channel.send(err)
+            }
             break
         }
     }

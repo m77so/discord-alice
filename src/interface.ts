@@ -5,10 +5,11 @@ export interface Song {
     title: string,
     site: string,
     duration: number,
+    source_url?: string
 }
-type stringnull = null | string
+
 export interface MusicSite {
-    play: (url: string, connection: VoiceConnection) => Promise<StreamDispatcher>,
+    play: (song: Song, connection: VoiceConnection) => Promise<StreamDispatcher>,
     getInfo: (url: string) => Promise<Song>,
     getId: (url:string) => (null|string),
     id: string

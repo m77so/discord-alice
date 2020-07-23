@@ -5,8 +5,8 @@ import {URL} from 'url'
 const id = 'youtube'
 
 
-const play = async function(url: string, connection: VoiceConnection): Promise<StreamDispatcher> {
-    return connection.play(await ytdl(url), { bitrate: "auto", type: 'opus' })
+const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
+    return connection.play(await ytdl(song.url), { bitrate: "auto", type: 'opus' })
 }
 
 const getInfo = async function (url: string): Promise<Song> {

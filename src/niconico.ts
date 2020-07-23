@@ -54,8 +54,8 @@ const getInfo = async function (url: string): Promise<Song> {
     }
 }
 
-const play = async function(url: string, connection: VoiceConnection): Promise<StreamDispatcher> {
-    const smid = /sm\d+/.exec(url)[0]
+const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
+    const smid = /sm\d+/.exec(song.url)[0]
     const converter = new Converter()
     const input = converter.createInputStream({
         f: "mp4",
