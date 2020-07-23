@@ -7,7 +7,7 @@ const {
 const id = 'twitter'
 
 
-const getId = function (url: string): string | null {
+const getId = async function (url: string): Promise<string | null> {
     let urlobj: URL = null
     try {
         urlobj = new URL(url)
@@ -22,7 +22,7 @@ const getId = function (url: string): string | null {
     return res[1]
 }
 const getInfo = async function (url: string): Promise<Song> {
-    const tweetid = getId(url)
+    const tweetid = await getId(url)
     const T = new Twit({
         consumer_key: twitter_consumer_key,
         consumer_secret: twitter_consumer_secret,

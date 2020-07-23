@@ -19,7 +19,7 @@ const getInfo = async function (url: string): Promise<Song> {
     }
 }
 
-const getId = function(url: string): string | null {
+const getId = async function(url: string): Promise<string | null> {
     let urlobj: URL = null
     try{
         urlobj = new URL(url)

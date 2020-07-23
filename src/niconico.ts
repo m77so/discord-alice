@@ -19,7 +19,7 @@ const nicoStream = async function (videoId: string) {
         console.error(err)
     }
 }
-const getId = function(url: string): string | null {
+const getId = async function(url: string): Promise<string | null> {
     let urlobj: URL = null
     try{
         urlobj = new URL(url)
@@ -34,7 +34,7 @@ const getId = function(url: string): string | null {
     return smids[0]
 }
 const getInfo = async function (url: string): Promise<Song> {
-    const smid = getId(url)
+    const smid = await getId(url)
     try {
         const session = await niconico.login(
             nico_email, nico_password

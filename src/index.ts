@@ -1,6 +1,6 @@
 import * as Discord from 'discord.js'
 import Niconico from './niconico'
-import Youtube from './youtube'
+import Youtube from './youtube-dl'
 import Twitter from './twitter'
 import { Song, MusicSite } from './interface'
 
@@ -32,7 +32,7 @@ const queueConstructor = function (q: Queue, id: string) {
     q[id] = { songs: [], connection: null, volume: 10, last_text_channel: null }
 }
 
-const musicSites: MusicSite[] = [Niconico, Youtube, Twitter]
+const musicSites: MusicSite[] = [Niconico, Twitter, Youtube]
 
 const play = async function (q: GuildQueue, song: Song) {
     if (song === undefined) {
@@ -83,7 +83,8 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
     let song: Song = null;
 
     for(const musicSite of musicSites) {
-        if (musicSite.getId(url) !== null) {
+        const musicId = await musicSite.getId(url)
+        if ( musicId !== null) {
             try{
                 song = await musicSite.getInfo(url)
             } catch (err) {
