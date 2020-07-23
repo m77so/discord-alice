@@ -1,6 +1,5 @@
 import { niconico, Nicovideo } from 'niconico'
 import { VoiceConnection, StreamDispatcher} from 'discord.js'
-import { Converter } from 'ffmpeg-stream'
 import { Song, MusicSite } from './interface'
 const {
     nico_email,
@@ -56,18 +55,8 @@ const getInfo = async function (url: string): Promise<Song> {
 
 const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
     const smid = /sm\d+/.exec(song.url)[0]
-    const converter = new Converter()
-    const input = converter.createInputStream({
-        f: "mp4",
-    })
     const nicostream = await nicoStream(smid)
-    nicostream.pipe(input)
-    const output = converter.createOutputStream({
-        acodec: "libmp3lame",
-        f: "mp3"
-    })
-    const dispatcher = connection.play(output,  { bitrate: "auto" })
-    converter.run() // awaitしない
+    const dispatcher = connection.play(nicostream,  { bitrate: "auto" })
     return dispatcher
 }
 
