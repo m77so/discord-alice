@@ -1,0 +1,8 @@
+{
+    "prefix": ":",
+    "token": "Your_discord_app_token",
+    "nico_email": "Your_niconico_email_address",
+    "nico_password": "Your_niconico_password",
+    "twitter_consumer_key": "Your_twitter_app_consumer_key",
+    "twitter_consumer_secret": "Your_twitter_app_consumer_secret"
+}
