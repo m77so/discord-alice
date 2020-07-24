@@ -1,7 +1,6 @@
 import youtubedl from 'youtube-dl'
 import { VoiceConnection, StreamDispatcher} from 'discord.js'
 import { Song, MusicSite } from './interface'
-import {URL} from 'url'
 import { promisify } from 'util'
 import {PassThrough, Duplex} from 'stream'
 const id = 'youtube-dl'

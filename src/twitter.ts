@@ -1,9 +1,10 @@
 import { VoiceConnection, StreamDispatcher } from 'discord.js'
 import { MusicSite, Song } from './interface'
 import Twit from 'twit'
-const {
+import {
     twitter_consumer_key, twitter_consumer_secret
-} = require('./config.json')
+} from './config'
+
 const id = 'twitter'
 
 

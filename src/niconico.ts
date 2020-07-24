@@ -1,10 +1,10 @@
 import { niconico, Nicovideo } from 'niconico'
 import { VoiceConnection, StreamDispatcher} from 'discord.js'
 import { Song, MusicSite } from './interface'
-const {
+import {
     nico_email,
     nico_password,
-} = require('./config.json')
+} from './config'
 const id = 'niconico'
 
 const nicoStream = async function (videoId: string) {

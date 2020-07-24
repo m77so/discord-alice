@@ -4,10 +4,8 @@ import Youtube from './youtube-dl'
 import Twitter from './twitter'
 import { Song, MusicSite } from './interface'
 
-const {
-    prefix,
-    token,
-} = require('./config.json')
+import { prefix, token } from './config'
+
 
 const client = new Discord.Client();
 client.login(token);
