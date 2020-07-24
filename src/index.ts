@@ -166,7 +166,7 @@ client.on('message', async message => {
     const serverQueue = queue[message.guild.id]
     serverQueue.last_text_channel = message.channel
     if (message.content.startsWith(`${prefix}play`)) {
-        append(message, serverQueue)
+        await append(message, serverQueue)
         showQueue(message, serverQueue)
     } else if (message.content.startsWith(`${prefix}skip`)) {
         skip(message, serverQueue)
