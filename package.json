@@ -13,6 +13,10 @@
     "ytdl-core": "^2.1.7",
     "ytdl-core-discord": "^1.2.1"
   },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
   "devDependencies": {
     "@types/jest": "^26.0.3",
     "@types/node": "^14.0.20",
@@ -20,7 +24,7 @@
     "jest": "^26.1.0",
     "ts-jest": "^26.1.1",
     "ts-node": "^8.10.2",
-    "ts-node-dev": "^1.0.0-pre.50",
+    "ts-node-dev": "^1.0.0-pre.55",
     "typescript": "^3.9.6"
   }
 }
