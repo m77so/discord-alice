@@ -65,7 +65,7 @@ const getInfo = async function (url: string): Promise<Song> {
 
 const play = async function (song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
     console.log(song.source_url)
-    const dispatcher = connection.play(song.source_url, { bitrate: "auto" })
+    const dispatcher = connection.play(song.source_url, { bitrate: "auto" , highWaterMark: 64})
     return dispatcher
 }
 

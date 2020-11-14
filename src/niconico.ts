@@ -56,7 +56,7 @@ const getInfo = async function (url: string): Promise<Song> {
 const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
     const smid = /sm\d+/.exec(song.url)[0]
     const nicostream = await nicoStream(smid)
-    const dispatcher = connection.play(nicostream,  { bitrate: "auto" })
+    const dispatcher = connection.play(nicostream,  { bitrate: "auto" , highWaterMark: 64})
     return dispatcher
 }
 

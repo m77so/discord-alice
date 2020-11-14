@@ -10,7 +10,7 @@ const play = async function(song: Song, connection: VoiceConnection): Promise<St
     const pt = new PassThrough()
     console.log(pt, song.url)
     youtubedl(song.url, [], { cwd: __dirname }).pipe(pt)
-    return connection.play(pt, { bitrate: "auto"})
+    return connection.play(pt, { bitrate: "auto", highWaterMark: 64})
 }
 
 const getInfo = async function (url: string): Promise<Song> {
