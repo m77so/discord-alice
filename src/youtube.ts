@@ -6,7 +6,7 @@ const id = 'youtube'
 
 
 const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
-    return connection.play(await ytdl(song.url), { bitrate: "auto", type: 'opus', highWaterMark: 64 })
+    return connection.play(await ytdl(song.url), { bitrate: "auto", highWaterMark: 64 })
 }
 
 const getInfo = async function (url: string): Promise<Song> {
