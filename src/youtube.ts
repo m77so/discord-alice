@@ -1,21 +1,30 @@
-import ytdl from 'ytdl-core-discord'
-import { VoiceConnection, StreamDispatcher} from 'discord.js'
+import ytdl from 'ytdl-core'
 import { Song, MusicSite } from './interface'
 import {URL} from 'url'
 const id = 'youtube'
+import {AudioPlayer, AudioResource, createAudioPlayer, createAudioResource,StreamType, VoiceConnection } from '@discordjs/voice';
 
 
-const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
-    return connection.play(await ytdl(song.url), { bitrate: "auto", highWaterMark: 64 })
+const resource = function(song: Song): AudioResource {
+
+    const stream = ytdl(ytdl.getURLVideoID(song.url), {
+        filter: format => format.audioCodec === 'opus' && format.container === 'webm', //webm opus
+        quality: 'highest',
+        highWaterMark: 32 * 1024 * 1024, // https://github.com/fent/node-ytdl-core/issues/902
+      });
+    const resource = createAudioResource(stream, {
+        inputType: StreamType.WebmOpus
+    });
+    return resource
 }
 
 const getInfo = async function (url: string): Promise<Song> {
     const songInfo = await ytdl.getInfo(url)
     return {
         site: id,
-        title: songInfo.title,
-        url: songInfo.video_url,
-        duration: parseInt(songInfo.length_seconds),
+        title: songInfo.videoDetails.title,
+        url: songInfo.videoDetails.video_url,
+        duration: parseInt(songInfo.videoDetails.lengthSeconds),
     }
 }
 
@@ -35,7 +44,7 @@ const getId = async function(url: string): Promise<string | null> {
 
 
 const Youtube: MusicSite = {
-    play, getInfo, getId, id
+    resource, getInfo, getId, id
 }
 
 export default Youtube

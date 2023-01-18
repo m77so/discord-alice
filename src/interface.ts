@@ -1,4 +1,4 @@
-import { VoiceConnection, StreamDispatcher } from "discord.js";
+import { AudioResource } from '@discordjs/voice'
 
 export interface Song {
     url: string,
@@ -9,7 +9,7 @@ export interface Song {
 }
 
 export interface MusicSite {
-    play: (song: Song, connection: VoiceConnection) => Promise<StreamDispatcher>,
+    resource: (song: Song) => AudioResource,
     getInfo: (url: string) => Promise<Song>,
     getId: (url:string) => Promise<null|string>,
     id: string
