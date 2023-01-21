@@ -32,17 +32,27 @@ interface GuildQueue {
     connection: DiscordVoice.VoiceConnection | null,
     subscription: DiscordVoice.PlayerSubscription | null,
     player: DiscordVoice.AudioPlayer | null,
+    resource: DiscordVoice.AudioResource | null,
     volume: number,
     last_text_channel: Discord.TextBasedChannel | null
 }
 type Queue = { [key: string]: GuildQueue }
 const queue: Queue = {}
 const queueConstructor = function (q: Queue, id: string) {
-    q[id] = { songs: [], connection: null, subscription: null, player: null, volume: 10, last_text_channel: null }
+    q[id] = { songs: [], connection: null, subscription: null, player: null, resource: null, volume: 10, last_text_channel: null }
 }
 
 // const musicSites: MusicSite[] = [Niconico, Twitter, Youtube, YoutubeDl]
 const musicSites: MusicSite[] = [Youtube]
+
+const connection_close = function (q: GuildQueue) {
+    q.songs = []
+    q.player.stop()
+    q.connection.disconnect()
+    q.connection.destroy()
+    q.player = null
+    q.connection = null
+}
 
 const play = async function (q: GuildQueue, song: Song) {
     if (song === undefined) {
@@ -61,16 +71,25 @@ const play = async function (q: GuildQueue, song: Song) {
     
         player.on(AudioPlayerStatus.Idle, () => {
             q.songs.shift()
-            play(q, q.songs[0])
+            if(q.songs.length > 0){
+                play(q, q.songs[0])
+            } else {
+                connection_close(q)
+            }
         })
+
 
         q.player = player
     }
 
     for (const musicSite of musicSites) {
         if (song.site === musicSite.id) {
-            q.player.play(musicSite.resource(song))
+            q.resource = musicSite.resource(song)
+            q.player.play(q.resource)
+            q.resource.volume.setVolumeLogarithmic(q.volume / 100)
+
             await DiscordVoice.entersState(q.player, AudioPlayerStatus.Playing, 10 * 1000)
+
             break
         }
     }
@@ -110,7 +129,8 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
 
     if (song === null) return message.channel.send(`URL: ${url} がわかりませんでした`)
     q.songs.push(song)
-    if (q.connection !== null) {
+    if (q.connection !== null ) {
+        console.log(q)
         return message.channel.send("曲を待ち行列に追加しました")
     }
 
@@ -129,52 +149,51 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
     }
 }
 
-// const skip = function (message: Discord.Message, q: GuildQueue) {
-//     if (q.songs.length < 1) {
-//         return message.channel.send("曲が流れていません")
-//     }
-//     if (message.member.voice.channel.id !== q.connection.channel.id) {
-//         return message.channel.send("聞いている人だけが止められます")
-//     }
-//     q.connection.dispatcher.end()
-// }
+const skip = function (message: Discord.Message, q: GuildQueue) {
+    if (q.songs.length < 1) {
+        return message.channel.send("曲が流れていません")
+    }
+    if (message.member.voice.channel.id !== q.connection.joinConfig.channelId) {
+        return message.channel.send("聞いている人だけが止められます")
+    }
+    q.player.stop()
+}
 
-// const stop = function (message: Discord.Message, q: GuildQueue) {
-//     if (message.member.voice.channel === null || message.member.voice.channel.id !== q.connection.channel.id) {
-//         return message.channel.send("聞いている人だけが止められます")
-//     }
-//     q.songs = []
-//     q.connection.dispatcher.end()
-// }
+const stop = function (message: Discord.Message, q: GuildQueue) {
+    if (message.member.voice.channel === null || message.member.voice.channel.id !== q.connection.joinConfig.channelId) {
+        return message.channel.send("聞いている人だけが止められます")
+    }
+    connection_close(q)
+}
 
 const showQueue = function (message: Discord.Message, q: GuildQueue) {
-    const msg = {
-        embed: {
-            title: "きゅー",
-            timestamp: new Date(),
-            fields: []
-        }
-    }
+    const msgEmbed = new Discord.EmbedBuilder()
+        .setColor(0x0099ff)
+        .setTitle("きゅー")
+        .setTimestamp()
+    
+
     q.songs.forEach((s, idx) => {
-        msg.embed.fields.push({
+        msgEmbed.addFields({
             name: `Track ${idx + 1}`,
             value: `[${s.title}](${s.url}) ${s.duration}sec`
         })
     })
-    // message.channel.send(msg)
+    message.channel.send({embeds: [msgEmbed]})
 }
 
-// const setVolume = function (message: Discord.Message, q: GuildQueue) {
-//     const args = message.content.split(" ").filter(str => str !== "");
-//     const vol = parseInt(args[1]);
-//     if (!(vol > 0 && vol < 1e5)) {
-//         return message.channel.send('不正な値です')
-//     }
-//     if (q.connection !== null && q.connection.dispatcher !== null )
-//         q.connection .dispatcher.setVolumeLogarithmic(vol / 100)
-//     q.volume = vol
-//     message.channel.send(`Volumeを${vol}に設定しました${vol > 100 ? '💔💔💔' : ''}`)
-// }
+const setVolume = function (message: Discord.Message, q: GuildQueue) {
+    const args = message.content.split(" ").filter(str => str !== "");
+    const vol = parseInt(args[1]);
+    if (!(vol > 0 && vol < 1e5)) {
+        return message.channel.send('不正な値です')
+    }
+    if (q.connection !== null && q.player !== null )
+        q.resource.volume.setVolumeLogarithmic(vol / 100)
+
+    q.volume = vol
+    message.channel.send(`Volumeを${vol}に設定しました${vol > 100 ? '💔💔💔' : ''}`)
+}
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
@@ -190,15 +209,15 @@ client.on('messageCreate', async message => {
         await append(message, serverQueue)
         showQueue(message, serverQueue)
     } else if (message.content.startsWith(`${prefix}skip`)) {
-        // skip(message, serverQueue)
+        skip(message, serverQueue)
     } else if (message.content.startsWith(`${prefix}stop`)) {
-        // stop(message, serverQueue)
+        stop(message, serverQueue)
     } else if (message.content.startsWith(`${prefix}q`)) {
         showQueue(message, serverQueue)
     } else if (message.content.startsWith(`${prefix}dumpq`)) {
         console.log(serverQueue)
     } else if (message.content.startsWith(`${prefix}volume`)) {
-        // setVolume(message, serverQueue)
+        setVolume(message, serverQueue)
     }
 })
 
