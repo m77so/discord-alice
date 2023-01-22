@@ -1,7 +1,6 @@
 import YTDlpWrap from 'yt-dlp-wrap';
 import { Song, MusicSite } from './interface'
-import { promisify } from 'util'
-import {PassThrough, Duplex} from 'stream'
+import { PassThrough } from 'stream'
 import { AudioResource, createAudioResource, StreamType } from '@discordjs/voice'
 import { join } from 'path'
 const id = 'youtube-dl'
@@ -29,7 +28,7 @@ const getInfo = async function (url: string): Promise<Song> {
         site: id,
         title: songInfo.title,
         url: songInfo.webpage_url,
-        duration: parseInt(songInfo._duration_raw),
+        duration: parseInt(songInfo.duration),
     }
 }
 
