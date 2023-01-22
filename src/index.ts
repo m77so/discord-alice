@@ -4,11 +4,12 @@ import * as DiscordVoice from '@discordjs/voice'
 // import Niconico from './niconico'
 import Youtube from './youtube'
 // import Twitter from './twitter'
-// import YoutubeDl from './youtube-dl'
+import YoutubeDl from './youtube-dl'
 import { Song, MusicSite } from './interface'
 
 import { prefix, token } from './config'
 import { AudioPlayerStatus, createAudioPlayer } from '@discordjs/voice'
+import Niconico from './niconico'
 
 
 const client = new Discord.Client({intents:[
@@ -43,7 +44,7 @@ const queueConstructor = function (q: Queue, id: string) {
 }
 
 // const musicSites: MusicSite[] = [Niconico, Twitter, Youtube, YoutubeDl]
-const musicSites: MusicSite[] = [Youtube]
+const musicSites: MusicSite[] = [Youtube, YoutubeDl]
 
 const connection_close = function (q: GuildQueue) {
     q.songs = []
