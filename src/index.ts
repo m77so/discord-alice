@@ -85,6 +85,7 @@ const play = async function (q: GuildQueue, song: Song) {
     for (const musicSite of musicSites) {
         if (song.site === musicSite.id) {
             q.resource = musicSite.resource(song)
+            
             q.player.play(q.resource)
             q.resource.volume.setVolumeLogarithmic(q.volume / 100)
 
@@ -120,6 +121,7 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
         if ( musicId !== null) {
             try{
                 song = await musicSite.getInfo(url)
+                
             } catch (err) {
                 return message.channel.send(err)
             }

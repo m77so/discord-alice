@@ -1,11 +1,12 @@
-import { AudioResource } from '@discordjs/voice'
+import { AudioResource, StreamType } from '@discordjs/voice'
 
 export interface Song {
     url: string,
     title: string,
     site: string,
     duration: number,
-    source_url?: string
+    source_url?: string,
+    input_type?: StreamType
 }
 
 export interface MusicSite {
