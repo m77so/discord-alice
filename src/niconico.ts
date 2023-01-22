@@ -1,10 +1,11 @@
 import { niconico, Nicovideo } from 'niconico'
-import { VoiceConnection, StreamDispatcher} from 'discord.js'
 import { Song, MusicSite } from './interface'
 import {
     nico_email,
     nico_password,
 } from './config'
+import { PassThrough } from 'stream'
+import { AudioResource, createAudioResource, StreamType } from '@discordjs/voice'
 const id = 'niconico'
 
 const nicoStream = async function (videoId: string) {
@@ -53,16 +54,25 @@ const getInfo = async function (url: string): Promise<Song> {
     }
 }
 
-const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
+const resource = function (song: Song): AudioResource {
+    const stream = new PassThrough({
+        highWaterMark: 1024 * 512,
+      });
+
     const smid = /sm\d+/.exec(song.url)[0]
-    const nicostream = await nicoStream(smid)
-    const dispatcher = connection.play(nicostream,  { bitrate: "auto" , highWaterMark: 64})
-    return dispatcher
+    nicoStream(smid).then(ns=> {
+        ns.pipe(stream)
+    })
+
+    const resource = createAudioResource(stream, {
+        inputType: StreamType.Arbitrary,
+        inlineVolume: true
+    });
+    return resource
 }
 
-
 const Niconico: MusicSite = {
-    play, getInfo, getId, id
+    resource, getInfo, getId, id
 }
 
 export default Niconico
