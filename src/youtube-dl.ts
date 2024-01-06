@@ -1,26 +1,34 @@
-import youtubedl from 'youtube-dl'
-import { VoiceConnection, StreamDispatcher} from 'discord.js'
+import YTDlpWrap from 'yt-dlp-wrap';
 import { Song, MusicSite } from './interface'
-import { promisify } from 'util'
-import {PassThrough, Duplex} from 'stream'
+import { PassThrough } from 'stream'
+import { AudioResource, createAudioResource, StreamType } from '@discordjs/voice'
+import { join } from 'path'
 const id = 'youtube-dl'
+const ytdlp = new YTDlpWrap(join(__dirname, './yt-dlp_linux'))
 
+const resource = function (song: Song): AudioResource {
+    const stream = new PassThrough({
+        highWaterMark: 1024 * 512,
+      });
+    ytdlp.execStream([
+        song.url
+    ]).pipe(stream)
 
-const play = async function(song: Song, connection: VoiceConnection): Promise<StreamDispatcher> {
-    const pt = new PassThrough()
-    console.log(pt, song.url)
-    youtubedl(song.url, [], { cwd: __dirname }).pipe(pt)
-    return connection.play(pt, { bitrate: "auto", highWaterMark: 64})
+    const resource = createAudioResource(stream, {
+        inputType: StreamType.Arbitrary,
+        inlineVolume: true
+    });
+    return resource
 }
 
 const getInfo = async function (url: string): Promise<Song> {
-    const songInfo = await promisify(youtubedl.getInfo)(url, [])
+    const songInfo = await ytdlp.getVideoInfo(url)
     console.log('ss',url, songInfo)
     return {
         site: id,
         title: songInfo.title,
         url: songInfo.webpage_url,
-        duration: parseInt(songInfo._duration_raw),
+        duration: parseInt(songInfo.duration),
     }
 }
 
@@ -32,7 +40,7 @@ const getId = async function(url: string): Promise<string|null> {
 
 
 const Youtube: MusicSite = {
-    play, getInfo, getId, id
+    resource, getInfo, getId, id
 }
 
 export default Youtube

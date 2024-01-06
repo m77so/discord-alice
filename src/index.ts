@@ -1,14 +1,23 @@
 import * as Discord from 'discord.js'
-import Niconico from './niconico'
+import * as DiscordVoice from '@discordjs/voice'
+
+// import Niconico from './niconico'
 import Youtube from './youtube'
-import Twitter from './twitter'
+// import Twitter from './twitter'
 import YoutubeDl from './youtube-dl'
 import { Song, MusicSite } from './interface'
 
 import { prefix, token } from './config'
+import { AudioPlayerStatus, createAudioPlayer } from '@discordjs/voice'
+import Niconico from './niconico'
 
 
-const client = new Discord.Client();
+const client = new Discord.Client({intents:[
+    Discord.GatewayIntentBits.Guilds,
+    Discord.GatewayIntentBits.GuildMessages,
+    Discord.GatewayIntentBits.GuildVoiceStates,
+    Discord.GatewayIntentBits.MessageContent,
+]});
 client.login(token);
 
 client.once('ready', () => {
@@ -21,17 +30,30 @@ client.once('disconnect', () => {
 
 interface GuildQueue {
     songs: Song[],
-    connection: Discord.VoiceConnection | null,
+    connection: DiscordVoice.VoiceConnection | null,
+    subscription: DiscordVoice.PlayerSubscription | null,
+    player: DiscordVoice.AudioPlayer | null,
+    resource: DiscordVoice.AudioResource | null,
     volume: number,
-    last_text_channel: Discord.TextChannel | Discord.DMChannel | Discord.NewsChannel | null
+    last_text_channel: Discord.TextBasedChannel | null
 }
 type Queue = { [key: string]: GuildQueue }
 const queue: Queue = {}
 const queueConstructor = function (q: Queue, id: string) {
-    q[id] = { songs: [], connection: null, volume: 10, last_text_channel: null }
+    q[id] = { songs: [], connection: null, subscription: null, player: null, resource: null, volume: 10, last_text_channel: null }
 }
 
-const musicSites: MusicSite[] = [Niconico, Twitter, Youtube, YoutubeDl]
+// const musicSites: MusicSite[] = [Niconico, Twitter, Youtube, YoutubeDl]
+const musicSites: MusicSite[] = [Youtube, YoutubeDl]
+
+const connection_close = function (q: GuildQueue) {
+    q.songs = []
+    q.player.stop()
+    q.connection.disconnect()
+    q.connection.destroy()
+    q.player = null
+    q.connection = null
+}
 
 const play = async function (q: GuildQueue, song: Song) {
     if (song === undefined) {
@@ -39,29 +61,43 @@ const play = async function (q: GuildQueue, song: Song) {
         console.log('song is undef')
         return
     }
+    if (q.player === null){
+        const player = createAudioPlayer()
+        q.connection.subscribe(player)
 
-    let dispatcher: Discord.StreamDispatcher = null
+        player.on('error', error => {
+            console.error(`Error: ${error.message}`);
+            return q.last_text_channel.send("再生に失敗しました")
+        })
+    
+        player.on(AudioPlayerStatus.Idle, () => {
+            q.songs.shift()
+            if(q.songs.length > 0){
+                play(q, q.songs[0])
+            } else {
+                connection_close(q)
+            }
+        })
 
-    for(const musicSite of musicSites) {
+
+        q.player = player
+    }
+
+    for (const musicSite of musicSites) {
         if (song.site === musicSite.id) {
-            dispatcher = await musicSite.play(song, q.connection)
+            q.resource = musicSite.resource(song)
+            
+            q.player.play(q.resource)
+            q.resource.volume.setVolumeLogarithmic(q.volume / 100)
+
+            await DiscordVoice.entersState(q.player, AudioPlayerStatus.Playing, 10 * 1000)
+
             break
         }
     }
+    
 
-    if (dispatcher === null) {
-        if (q.last_text_channel !== null)
-            return q.last_text_channel.send("再生に失敗しました")
-        return
-    }
 
-    dispatcher.setVolumeLogarithmic(q.volume / 100)
-
-    dispatcher.on('finish', () => {
-        q.songs.shift()
-        play(q, q.songs[0])
-    })
-        .on("error", error => console.error(error));
 }
 
 
@@ -72,7 +108,7 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
         return message.channel.send("ボイスチャンネルに参加して")
     }
     const permissions = voiceChannel.permissionsFor(message.client.user);
-    if (!permissions.has("CONNECT") || !permissions.has("SPEAK")) {
+    if (!permissions.has(Discord.PermissionFlagsBits.Connect) || !permissions.has(Discord.PermissionFlagsBits.Speak)) {
         return message.channel.send(
             "チャンネルに参加して発話する権利をください"
         );
@@ -86,6 +122,7 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
         if ( musicId !== null) {
             try{
                 song = await musicSite.getInfo(url)
+                
             } catch (err) {
                 return message.channel.send(err)
             }
@@ -95,12 +132,19 @@ const append = async function (message: Discord.Message, q: GuildQueue) {
 
     if (song === null) return message.channel.send(`URL: ${url} がわかりませんでした`)
     q.songs.push(song)
-    if (q.connection !== null) {
+    if (q.connection !== null ) {
+        console.log(q)
         return message.channel.send("曲を待ち行列に追加しました")
     }
 
     try {
-        const connection = await voiceChannel.join()
+        const connection = DiscordVoice.joinVoiceChannel({
+            channelId: voiceChannel.id,
+            guildId: voiceChannel.guildId,
+            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            selfDeaf: true,
+            selfMute: false,
+        })
         q.connection = connection;
         play(q, q.songs[0])
     } catch (err) {
@@ -112,35 +156,33 @@ const skip = function (message: Discord.Message, q: GuildQueue) {
     if (q.songs.length < 1) {
         return message.channel.send("曲が流れていません")
     }
-    if (message.member.voice.channel.id !== q.connection.channel.id) {
+    if (message.member.voice.channel.id !== q.connection.joinConfig.channelId) {
         return message.channel.send("聞いている人だけが止められます")
     }
-    q.connection.dispatcher.end()
+    q.player.stop()
 }
 
 const stop = function (message: Discord.Message, q: GuildQueue) {
-    if (message.member.voice.channel === null || message.member.voice.channel.id !== q.connection.channel.id) {
+    if (message.member.voice.channel === null || message.member.voice.channel.id !== q.connection.joinConfig.channelId) {
         return message.channel.send("聞いている人だけが止められます")
     }
-    q.songs = []
-    q.connection.dispatcher.end()
+    connection_close(q)
 }
 
 const showQueue = function (message: Discord.Message, q: GuildQueue) {
-    const msg = {
-        embed: {
-            title: "きゅー",
-            timestamp: new Date(),
-            fields: []
-        }
-    }
+    const msgEmbed = new Discord.EmbedBuilder()
+        .setColor(0x0099ff)
+        .setTitle("きゅー")
+        .setTimestamp()
+    
+
     q.songs.forEach((s, idx) => {
-        msg.embed.fields.push({
+        msgEmbed.addFields({
             name: `Track ${idx + 1}`,
             value: `[${s.title}](${s.url}) ${s.duration}sec`
         })
     })
-    message.channel.send(msg)
+    message.channel.send({embeds: [msgEmbed]})
 }
 
 const setVolume = function (message: Discord.Message, q: GuildQueue) {
@@ -149,12 +191,14 @@ const setVolume = function (message: Discord.Message, q: GuildQueue) {
     if (!(vol > 0 && vol < 1e5)) {
         return message.channel.send('不正な値です')
     }
-    if (q.connection !== null && q.connection.dispatcher !== null )
-        q.connection.dispatcher.setVolumeLogarithmic(vol / 100)
+    if (q.connection !== null && q.player !== null )
+        q.resource.volume.setVolumeLogarithmic(vol / 100)
+
     q.volume = vol
     message.channel.send(`Volumeを${vol}に設定しました${vol > 100 ? '💔💔💔' : ''}`)
 }
-client.on('message', async message => {
+
+client.on('messageCreate', async message => {
     if (message.author.bot) return;
     if (!message.content.startsWith(prefix)) return;
     console.log(message.content)
